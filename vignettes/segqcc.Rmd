@@ -1,0 +1,178 @@
+---
+title: "Segmented control charts with segqcc"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Segmented control charts with segqcc}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>", message = FALSE,
+                      fig.width = 8, fig.height = 4.5, fig.align = "center")
+library(segqcc)
+```
+
+## The problem
+
+A Shewhart chart assumes one process: a single centre, a single pair of control
+limits, estimated from the whole series. When the process trends or switches
+regime that assumption fails, and the chart reports it in the least useful way
+possible — a long run of points outside limits that describe a state the
+process left long ago.
+
+The bundled `segxbar` data set is a variable process observed in 400 samples of
+8 units, built in three stretches with means 100, 101.5 and 99.5. Charted the
+ordinary way:
+
+```{r global, fig.cap = "One global set of limits for a process with two shifts."}
+suppressPackageStartupMessages(library(qcc))
+groups <- qcc.groups(segxbar$value, segxbar$sample)
+invisible(qcc(groups, type = "xbar", nsigmas = 3))
+```
+
+Every sample of the middle stretch is an alarm. The chart is not wrong, but it
+tells us only that the mean moved — not where, and not whether the process was
+stable on either side of the move.
+
+## The segmented chart
+
+`segmented_qcc()` locates the change points in the charted statistic and
+recomputes the centre and the limits inside each segment:
+
+```{r segmented}
+fit <- segmented_qcc(segxbar$value, type = "xbar", sample = segxbar$sample)
+fit
+```
+
+The two change points sit exactly where the process was built to move, and each
+stretch is now judged against the limits that applied to it:
+
+```{r segmented-plot, fig.cap = "Per-segment limits, drawn only across their own segment."}
+plot(fit)
+```
+
+One sample is out of control — the sort of signal the chart is for, and which
+the global chart buried under 120 false ones.
+
+The result is an ordinary `qcc` object carrying per-sample limits, with three
+extra components:
+
+```{r components}
+fit$change.points
+fit$segments
+head(fit$out_of_control)
+```
+
+## Chart types
+
+The same pipeline works for every chart `qcc` provides. Attribute charts take
+one value per sample, so no `sample` argument:
+
+```{r attribute}
+segmented_qcc(segc$value, type = "c")
+```
+
+`p` and `np` need `sizes`, and `u` needs `area`:
+
+```{r p-chart}
+segmented_qcc(segp$value, type = "p", sizes = segp$sizes)$segments
+```
+
+When the process is observed one unit at a time there is no within-sample
+variability to estimate sigma from, and the chart has to be the individuals
+one. Use `type = "xbar.one"`:
+
+```{r individuals}
+segmented_qcc(segind$value, type = "xbar.one")$segments
+```
+
+Asking for `"xbar"` on samples of size 1 is an error rather than a silent
+fallback, because the two charts estimate sigma from different things:
+
+```{r xbar-one-error, error = TRUE}
+segmented_qcc(segind$value, type = "xbar", sample = seq_len(nrow(segind)))
+```
+
+For grouped samples, the R chart is available for sizes up to 25 — the range
+over which `qcc` tabulates its d2/d3 constants — and the S chart for any size.
+
+## Why the statistic is standardised
+
+`changepoint`'s normal-likelihood cost assumes a unit-variance series. A
+control-chart statistic almost never has one, and the mismatch does not degrade
+the detector gently: it over-segments in proportion to the dispersion of the
+series. On a homogeneous series — no change points at all — `cpt.mean` alone
+finds plenty:
+
+```{r scale-demo}
+suppressPackageStartupMessages(library(changepoint))
+set.seed(1)
+sapply(c(1, 2, 5, 20), function(s)
+  length(cpts(cpt.mean(rnorm(400, 100, s), method = "PELT", penalty = "MBIC"))))
+```
+
+`segmented_qcc()` therefore standardises the statistic before handing it to the
+detector, by default with the moving-range estimate of sigma. Unlike `sd()`,
+that estimate is not inflated by the very level shifts being looked for:
+
+```{r scale-fixed}
+set.seed(1)
+sapply(c(1, 2, 5, 20), function(s)
+  length(segmented_qcc(rnorm(4000, 100, s), type = "xbar",
+                       sample = rep(1:400, each = 10))$change.points))
+```
+
+Detection is now invariant to the units of the data, which is what lets the
+same call be pointed at an unfamiliar series. Change points are positions, so
+nothing has to be transformed back; the limits are always recomputed from the
+original data. `scale = "none"` restores the unstandardised behaviour for
+anyone who wants it.
+
+## Series that cannot be segmented
+
+Pointed at arbitrary data, the function will meet series it cannot split. None
+of these is an error: you get an ordinary single-segment control chart, a
+warning, and the reason in `$notes`.
+
+```{r degenerate}
+fit <- segmented_qcc(c(3, 5, 4, 6), type = "c", min_seg_len = 3)
+fit$notes
+nrow(fit$segments)
+```
+
+The same applies one segment at a time. An individuals chart needs two samples
+for a moving range, so a one-sample segment has no limits of its own and
+borrows those of the whole series, flagged in `limits_from`:
+
+```{r fallback}
+set.seed(7)
+v <- c(rnorm(30, 50, 1), 80, rnorm(30, 50, 1))
+segmented_qcc(v, type = "xbar.one")$segments
+```
+
+## Tuning the detector
+
+`method`, `penalty` and `min_seg_len` are passed to `changepoint`; `cpt_stat`
+chooses whether to look for a change in the mean, the variance or both. A
+stricter penalty yields fewer, larger segments:
+
+```{r tuning}
+for (pen in c("AIC", "BIC", "MBIC")) {
+  n <- length(segmented_qcc(segc$value, type = "c", penalty = pen)$change.points)
+  cat(pen, ":", n, "change point(s)\n")
+}
+```
+
+## Sample labels
+
+Samples are ordered by first appearance, so labels can be anything — integers
+with gaps, characters, factors — and the time order of the data is never
+silently permuted:
+
+```{r labels}
+set.seed(31)
+v   <- rnorm(600, rep(c(100, 106), each = 300), 1)
+lab <- rep(sprintf("batch-%02d", c(30:1, 60:31)), each = 10)
+segmented_qcc(v, type = "xbar", sample = lab)$change.points
+```

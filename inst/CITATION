@@ -1,0 +1,11 @@
+citHeader("To cite segqcc in publications use:")
+
+bibentry(
+  bibtype  = "Manual",
+  title    = "segqcc: Change-Point Segmented Control Charts",
+  author   = c(person("Christian", "González-Martel"),
+               person("Jaime", "Pinilla Domínguez")),
+  year     = "2026",
+  note     = "R package version 0.1.0",
+  url      = "https://github.com/chrglez/segqcc"
+)
