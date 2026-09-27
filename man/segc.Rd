@@ -14,7 +14,7 @@ Simulated (seed 4242), see \code{tools/generate_data.R}.
 segc
 }
 \description{
-Simulated Poisson defect process: 300 samples with a defect-rate shift from 3
-to 5 at sample 150.
+Simulated Poisson defect process: 300 samples with a defect-rate shift
+from 3 to 5 at sample 150.
 }
 \keyword{datasets}

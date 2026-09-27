@@ -6,11 +6,7 @@
 \alias{segqcc-package}
 \title{segqcc: Change-Point Segmented Control Charts}
 \description{
-Detects change points in a control-chart statistic (via the 'changepoint'
-package) and rebuilds the chart with the centre and the control limits
-recomputed within each homogeneous segment. Trending or regime-switching
-series are thereby assessed against locally appropriate limits instead of a
-single global set.
+Detects change points in a control-chart statistic (via the 'changepoint' package) and rebuilds the chart with the centre and the control limits recomputed within each homogeneous segment. Trending or regime-switching series are thereby assessed against locally appropriate limits instead of a single global set. Supports variable (xbar, R, S), individuals (xbar.one) and attribute (p, np, c, u) charts, and wraps 'qcc'. The charted statistic is standardised before detection, which makes the change points invariant to the units of the data. Series that cannot be segmented return an ordinary single-segment chart with a warning rather than an error. Bundled deterministic example data sets (segxbar, segind, segp, segc) make the package self-contained.
 }
 \seealso{
 Useful links:
@@ -18,14 +14,16 @@ Useful links:
   \item \url{https://github.com/chrglez/segqcc}
   \item Report bugs at \url{https://github.com/chrglez/segqcc/issues}
 }
+
 }
 \author{
-\strong{Maintainer}: Christian González-Martel
-\email{christian.gonzalez@ulpgc.es}
+\strong{Maintainer}: Christian González-Martel \email{christian.gonzalez@ulpgc.es}
 
 Authors:
 \itemize{
+  \item Christian González-Martel \email{christian.gonzalez@ulpgc.es}
   \item Jaime Pinilla Domínguez \email{jaime.pinilla@ulpgc.es}
 }
+
 }
 \keyword{internal}

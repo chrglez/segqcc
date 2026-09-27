@@ -29,17 +29,23 @@ segmented_xbar(
 
 \item{penalty}{penalty passed to \code{changepoint}: one of \code{"None"},
 \code{"SIC"}, \code{"BIC"}, \code{"MBIC"} (default), \code{"AIC"},
-\code{"Hannan-Quinn"}, \code{"Asymptotic"}, \code{"Manual"}, \code{"CROPS"}.}
+\code{"Hannan-Quinn"}, \code{"Asymptotic"}, \code{"Manual"},
+\code{"CROPS"}.}
 
 \item{pen_value}{value for the \code{"Asymptotic"}, \code{"Manual"} and
 \code{"CROPS"} penalties; ignored otherwise.}
 
-\item{cpt_stat}{what the detector looks for in the charted statistic: a change
-in \code{"mean"} (default), in \code{"var"}iance, or in either
-(\code{"meanvar"}).}
+\item{cpt_stat}{what the detector looks for in the charted statistic:
+a change in \code{"mean"} (default, via
+\code{\link[changepoint]{cpt.mean}}), in \code{"var"}iance
+(\code{\link[changepoint]{cpt.var}}), or in either
+(\code{"meanvar"}, \code{\link[changepoint]{cpt.meanvar}}).}
 
-\item{scale}{how the charted statistic is standardised before it is handed to
-the detector: \code{"mr"} (default), \code{"sd"} or \code{"none"}.}
+\item{scale}{how the charted statistic is standardised before it is handed
+to the detector: \code{"mr"} (default) divides by the moving-range
+estimate of sigma, \code{"sd"} by the sample standard deviation, and
+\code{"none"} passes the statistic through untouched. See Details --
+leaving this at \code{"none"} makes the detector scale-dependent.}
 
 \item{min_seg_len}{minimum segment length, in samples (1).}
 
@@ -57,4 +63,5 @@ Shorthand for the variable X-bar chart. Equivalent to
 data(segxbar)
 fit <- segmented_xbar(segxbar$value, segxbar$sample)
 fit$segments
+
 }

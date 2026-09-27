@@ -11,18 +11,14 @@ root.
 
 ## Regenerating the help pages
 
-The `man/*.Rd` files are the roxygen output, but they were last written by hand
-because `roxygen2` could not be installed on the development machine (`xml2`
-needs `libxml2-dev`). **They can therefore drift from the roxygen comments in
-`R/`, which remain the source of truth.** Once the system library is available:
+`man/*.Rd` and `NAMESPACE` are generated from the roxygen comments in `R/`,
+which are the source of truth. Never edit them by hand:
 
 ```sh
-sudo apt install libxml2-dev
-Rscript -e 'install.packages("roxygen2")'
 Rscript -e 'roxygen2::roxygenise()'
 ```
 
-and check `git diff man/ NAMESPACE` before committing.
+`roxygen2` needs `xml2`, which needs the `libxml2-dev` system package.
 
 ## Building the vignette
 

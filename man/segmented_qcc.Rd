@@ -21,19 +21,21 @@ segmented_qcc(
 )
 }
 \arguments{
-\item{value}{numeric vector. For variable charts (\code{"xbar"}, \code{"R"},
-\code{"S"}) one value per individual observation, grouped by \code{sample}.
-For \code{"xbar.one"} and for the attribute charts one value per sample: the
-observation itself, or the number of defectives/defects.}
+\item{value}{numeric vector. For variable charts (\code{"xbar"},
+\code{"R"}, \code{"S"}) one value per individual observation, grouped by
+\code{sample}. For \code{"xbar.one"} and for the attribute charts one
+value per sample: the observation itself, or the number of
+defectives/defects.}
 
 \item{type}{control-chart type: \code{"xbar"}, \code{"R"} or \code{"S"}
-(variable, grouped samples), \code{"xbar.one"} (individuals, one observation
-per sample) or \code{"p"}, \code{"np"}, \code{"c"}, \code{"u"} (attribute).}
+(variable, grouped samples), \code{"xbar.one"} (individuals, one
+observation per sample) or \code{"p"}, \code{"np"}, \code{"c"},
+\code{"u"} (attribute).}
 
 \item{sample}{sample labels, one per element of \code{value}, for variable
-charts. Any type coercible to character is accepted; samples are ordered by
-\strong{first appearance}, so the data must be in time order. Ignored, with a
-warning, for the other chart types.}
+charts. Any type coercible to character is accepted; samples are ordered
+by \strong{first appearance}, so the data must be in time order. Ignored,
+with a warning, for the other chart types.}
 
 \item{sizes}{per-sample size, required for \code{"p"} and \code{"np"}.}
 
@@ -46,21 +48,23 @@ warning, for the other chart types.}
 
 \item{penalty}{penalty passed to \code{changepoint}: one of \code{"None"},
 \code{"SIC"}, \code{"BIC"}, \code{"MBIC"} (default), \code{"AIC"},
-\code{"Hannan-Quinn"}, \code{"Asymptotic"}, \code{"Manual"}, \code{"CROPS"}.}
+\code{"Hannan-Quinn"}, \code{"Asymptotic"}, \code{"Manual"},
+\code{"CROPS"}.}
 
 \item{pen_value}{value for the \code{"Asymptotic"}, \code{"Manual"} and
 \code{"CROPS"} penalties; ignored otherwise.}
 
-\item{cpt_stat}{what the detector looks for in the charted statistic: a change
-in \code{"mean"} (default, via \code{\link[changepoint]{cpt.mean}}), in
-\code{"var"}iance (\code{\link[changepoint]{cpt.var}}), or in either
+\item{cpt_stat}{what the detector looks for in the charted statistic:
+a change in \code{"mean"} (default, via
+\code{\link[changepoint]{cpt.mean}}), in \code{"var"}iance
+(\code{\link[changepoint]{cpt.var}}), or in either
 (\code{"meanvar"}, \code{\link[changepoint]{cpt.meanvar}}).}
 
-\item{scale}{how the charted statistic is standardised before it is handed to
-the detector: \code{"mr"} (default) divides by the moving-range estimate of
-sigma, \code{"sd"} by the sample standard deviation, and \code{"none"} passes
-the statistic through untouched. See Details -- leaving this at \code{"none"}
-makes the detector scale-dependent.}
+\item{scale}{how the charted statistic is standardised before it is handed
+to the detector: \code{"mr"} (default) divides by the moving-range
+estimate of sigma, \code{"sd"} by the sample standard deviation, and
+\code{"none"} passes the statistic through untouched. See Details --
+leaving this at \code{"none"} makes the detector scale-dependent.}
 
 \item{min_seg_len}{minimum segment length, in samples (1).}
 
@@ -71,52 +75,53 @@ An object of class \code{c("segmented_qcc", "qcc")}: the
 \code{\link[qcc]{qcc}} object for the whole series, carrying per-sample
 limits, plus
 \describe{
-  \item{\code{change.points}}{sample positions AFTER which the statistic
-    changed; \code{integer(0)} when the series is homogeneous.}
-  \item{\code{segments}}{data.frame with one row per segment: \code{from},
-    \code{to}, \code{n_samples}, \code{LCL}, \code{center}, \code{UCL},
-    \code{n_out} and \code{limits_from} (\code{"segment"}, or
-    \code{"global"} when that segment could not be refitted on its own).}
-  \item{\code{out_of_control}}{sample positions whose statistic falls outside
-    the limits of the segment it belongs to.}
-  \item{\code{segmented}}{\code{TRUE} if change-point detection ran and split
-    the series, \code{FALSE} if it was skipped or found nothing.}
-  \item{\code{notes}}{character vector of the reasons detection or a
-    per-segment refit degraded, empty when everything succeeded.}
+\item{\code{change.points}}{sample positions AFTER which the statistic
+changed; \code{integer(0)} when the series is homogeneous.}
+\item{\code{segments}}{data.frame with one row per segment:
+\code{from}, \code{to}, \code{n_samples}, \code{LCL},
+\code{center}, \code{UCL}, \code{n_out} and \code{limits_from}
+(\code{"segment"}, or \code{"global"} when that segment could not be
+refitted on its own).}
+\item{\code{out_of_control}}{sample positions whose statistic falls
+outside the limits of the segment it belongs to.}
+\item{\code{segmented}}{\code{TRUE} if change-point detection ran and
+split the series, \code{FALSE} if it was skipped or found nothing.}
+\item{\code{notes}}{character vector of the reasons detection or a
+per-segment refit degraded, empty when everything succeeded.}
 }
 }
 \description{
-Detect change points in a control-chart statistic (via the \code{changepoint}
-package) and rebuild the chart with the centre and the control limits
-recomputed within each homogeneous segment. Trending or regime-switching
-processes are therefore judged against locally appropriate limits instead of a
-single global set.
+Detect change points in a control-chart statistic (via the
+\code{changepoint} package) and rebuild the chart with the centre and the
+control limits recomputed within each homogeneous segment. Trending or
+regime-switching processes are therefore judged against locally appropriate
+limits instead of a single global set.
 }
 \details{
-The pipeline is: (1) fit a \code{\link[qcc]{qcc}} chart to the whole series to
-obtain the per-sample statistic; (2) run the requested \code{changepoint}
+The pipeline is: (1) fit a \code{\link[qcc]{qcc}} chart to the whole series
+to obtain the per-sample statistic; (2) run the requested \code{changepoint}
 detector on that statistic; (3) refit the chart within each segment to get
 locally appropriate limits and centre; (4) rebuild the full chart with those
 per-sample limits.
 
-\strong{Standardisation.} \code{changepoint}'s normal-likelihood cost assumes a
-unit-variance series, so a statistic on any other scale is over-segmented: on
-an homogeneous N(100, 2) series of 400 samples \code{cpt.mean} reports about 6
-spurious change points, and about 166 when the standard deviation is 20.
-\code{segmented_qcc} therefore standardises the statistic before detection
-(\code{scale}), which removes the spurious splits at every scale without
-costing detection power. Change points are positions, so nothing has to be
-mapped back: the limits themselves are always recomputed from the original
-data.
+\strong{Standardisation.} \code{changepoint}'s normal-likelihood cost
+assumes a unit-variance series, so a statistic on any other scale is
+over-segmented: on an homogeneous N(100, 2) series of 400 samples
+\code{cpt.mean} reports about 6 spurious change points, and about 166 when
+the standard deviation is 20. \code{segmented_qcc} therefore standardises
+the statistic before detection (\code{scale}), which removes the spurious
+splits at every scale without costing detection power. Change points are
+positions, so nothing has to be mapped back: the limits themselves are
+always recomputed from the original data.
 
 \strong{Degenerate series.} The function is meant to be pointed at arbitrary
-series, so it does not fail when step (2) cannot be carried out. If the series
-is too short for the requested \code{min_seg_len}, if the statistic is
-constant, or if the detector itself refuses the data, a single-segment chart
--- an ordinary control chart -- is returned with a warning, and the reason is
-recorded in \code{notes}. The same applies per segment in step (3): a segment
-that cannot be refitted on its own falls back to the global limits rather than
-aborting the whole call.
+series, so it does not fail when step (2) cannot be carried out. If the
+series is too short for the requested \code{min_seg_len}, if the statistic
+is constant, or if the detector itself refuses the data, a single-segment
+chart — an ordinary control chart — is returned with a warning, and the
+reason is recorded in \code{notes}. The same applies per segment in step
+(3): a segment that cannot be refitted on its own falls back to the global
+limits rather than aborting the whole call.
 }
 \examples{
 # variable chart: 400 samples of 8, with mean shifts at 120 and 240
@@ -135,6 +140,7 @@ segmented_qcc(segc$value, type = "c")
 
 # a series too short to segment still returns a usable chart
 suppressWarnings(segmented_qcc(c(3, 5, 4), type = "c"))
+
 }
 \seealso{
 \code{\link{segmented_xbar}} for the X-bar shorthand and

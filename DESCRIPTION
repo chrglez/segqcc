@@ -34,5 +34,5 @@ Suggests:
 VignetteBuilder: knitr
 URL: https://github.com/chrglez/segqcc
 BugReports: https://github.com/chrglez/segqcc/issues
-RoxygenNote: 7.3.2
 Roxygen: list(markdown = TRUE)
+Config/roxygen2/version: 8.1.0

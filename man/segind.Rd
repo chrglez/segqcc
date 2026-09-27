@@ -5,8 +5,8 @@
 \alias{segind}
 \title{Individuals segmented example (one observation per sample)}
 \format{
-A data.frame with one column, \code{value} (the individual observation of each
-sample).
+A data.frame with one column, \code{value} (the individual
+observation of each sample).
 }
 \source{
 Simulated (seed 31415), see \code{tools/generate_data.R}.
@@ -15,9 +15,9 @@ Simulated (seed 31415), see \code{tools/generate_data.R}.
 segind
 }
 \description{
-Simulated process observed one unit at a time: 400 samples of size 1, in three
-segments with means 50, 53, 51 (SD 1.5), so the shifts sit at samples 150 and
-250. With samples of size 1 there is no within-sample variability to estimate
-sigma from, so this is the \code{type = "xbar.one"} case.
+Simulated process observed one unit at a time: 400 samples of size 1, in
+three segments with means 50, 53, 51 (SD 1.5), so the shifts sit at samples
+150 and 250. With samples of size 1 there is no within-sample variability to
+estimate sigma from, so this is the \code{type = "xbar.one"} case.
 }
 \keyword{datasets}

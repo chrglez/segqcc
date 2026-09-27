@@ -5,8 +5,8 @@
 \alias{segxbar}
 \title{X-bar segmented example (variable process)}
 \format{
-A data.frame with columns \code{value} (individual observations) and
-\code{sample} (sample index).
+A data.frame with columns \code{value} (individual observations)
+and \code{sample} (sample index).
 }
 \source{
 Simulated (seed 20260925), see \code{tools/generate_data.R}.
@@ -15,8 +15,8 @@ Simulated (seed 20260925), see \code{tools/generate_data.R}.
 segxbar
 }
 \description{
-Simulated variable process: 400 samples of 8 observations each, built in three
-segments with means 100, 101.5, 99.5 (SD 2). A mean shift is embedded at
-samples 120 and 240.
+Simulated variable process: 400 samples of 8 observations each, built in
+three segments with means 100, 101.5, 99.5 (SD 2). A mean shift is
+embedded at samples 120 and 240.
 }
 \keyword{datasets}

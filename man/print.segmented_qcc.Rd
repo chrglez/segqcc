@@ -22,4 +22,5 @@ Print a segmented control chart
 \examples{
 data(segc)
 segmented_qcc(segc$value, type = "c")
+
 }

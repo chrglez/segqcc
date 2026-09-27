@@ -43,4 +43,5 @@ highlighted.
 data(segxbar)
 fit <- segmented_qcc(segxbar$value, type = "xbar", sample = segxbar$sample)
 plot_segmented_qcc(fit)
+
 }

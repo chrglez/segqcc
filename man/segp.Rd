@@ -5,8 +5,8 @@
 \alias{segp}
 \title{p-chart segmented example (attribute process)}
 \format{
-A data.frame with columns \code{value} (defectives per sample) and
-\code{sizes} (sample size per sample).
+A data.frame with columns \code{value} (defectives per sample)
+and \code{sizes} (sample size per sample).
 }
 \source{
 Simulated (seed 777), see \code{tools/generate_data.R}.
@@ -15,7 +15,7 @@ Simulated (seed 777), see \code{tools/generate_data.R}.
 segp
 }
 \description{
-Simulated attribute process: 300 samples of size 50 with a defect-rate shift
-from 0.05 to 0.09 at sample 150.
+Simulated attribute process: 300 samples of size 50 with a defect-rate
+shift from 0.05 to 0.09 at sample 150.
 }
 \keyword{datasets}

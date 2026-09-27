@@ -22,4 +22,5 @@ Adds the per-segment out-of-control samples to what \code{print()} shows.
 \examples{
 data(segxbar)
 summary(segmented_xbar(segxbar$value, segxbar$sample))
+
 }
