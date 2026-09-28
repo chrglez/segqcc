@@ -18,6 +18,14 @@ rebuilds the [`qcc`](https://cran.r-project.org/package=qcc) chart with the
 centre and the control limits **recomputed inside each homogeneous segment**,
 so each sample is judged against the limits that actually applied to it.
 
+Splitting a chart this way is established practice, but the split points are
+normally chosen by eye, helped by a significance test on a fitted trend line
+(see, for instance, [SPC for
+Excel](https://www.spcforexcel.com/knowledge/control-chart-examples/control-charts-and-trending-data/)
+on trending data). `segqcc` locates them by change-point detection instead, so
+neither where the series breaks nor how many segments it has is decided by
+hand.
+
 ![Segmented xbar and c charts](man/figures/README-example.png)
 
 ## Installation
