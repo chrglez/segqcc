@@ -2,8 +2,10 @@
 #'
 #' Draws the per-sample statistic with each segment's centre and control limits
 #' spanning \emph{only} the samples of that segment, and the detected change
-#' points as vertical rules. Points outside the limits of their own segment are
-#' highlighted.
+#' points as vertical rules. Samples outside the limits of their own segment
+#' are marked in red, and samples belonging to a run on one side of their
+#' segment's centre line in orange, following the convention of
+#' \code{\link[qcc]{plot.qcc}}.
 #'
 #' @param fit object returned by \code{\link{segmented_qcc}} or
 #'   \code{\link{segmented_xbar}}.
@@ -59,6 +61,10 @@ plot_segmented_qcc <- function(fit, main = NULL, xlab = "Sample", ylab = NULL,
   lines_x <- seq_along(stats)
   points(lines_x, stats, type = "l", col = "gray65")
   points(lines_x, stats, pch = 16, cex = 0.6)
+  # Run violations first, so a sample that is both keeps the stronger red.
+  if (length(fit$violating_runs))
+    points(fit$violating_runs, stats[fit$violating_runs], pch = 16,
+           col = "orange", cex = 1.0)
   if (length(fit$out_of_control))
     points(fit$out_of_control, stats[fit$out_of_control], pch = 16,
            col = "red", cex = 1.1)
@@ -67,10 +73,11 @@ plot_segmented_qcc <- function(fit, main = NULL, xlab = "Sample", ylab = NULL,
     mtext("no change points detected - single segment", side = 3, line = 0.2,
           cex = 0.8, col = "gray35")
   if (show_legend)
-    legend("topleft", bty = "n", cex = 0.75, horiz = TRUE,
-           legend = c("centre", "limits", "change point", "out of control"),
-           col = c("blue", "red", "gray40", "red"),
-           lty = c(1, 2, 3, NA), pch = c(NA, NA, NA, 16))
+    legend("topleft", bty = "n", cex = 0.72, horiz = TRUE,
+           legend = c("centre", "limits", "change point", "beyond limits",
+                      "violating run"),
+           col = c("blue", "red", "gray40", "red", "orange"),
+           lty = c(1, 2, 3, NA, NA), pch = c(NA, NA, NA, 16, 16))
   invisible(fit)
 }
 
@@ -101,9 +108,12 @@ print.segmented_qcc <- function(x, digits = 4, ...) {
       if (length(x$change.points)) paste(x$change.points, collapse = ", ")
       else "none detected", "\n", sep = "")
   cat("Segments:       ", nrow(x$segments), "\n", sep = "")
-  cat("Out of control: ", length(x$out_of_control), " of ", x$n_samples,
+  cat("Beyond limits:  ", length(x$out_of_control), " of ", x$n_samples,
       " samples (", format(100 * length(x$out_of_control) / x$n_samples,
                            digits = 2), "%)\n", sep = "")
+  cat("Violating runs: ", length(x$violating_runs), " samples (runs of ",
+      x$run_length, "+ on one side of the centre, within a segment)\n",
+      sep = "")
   cat("\n")
   print(.format_segments(x$segments, digits))
   if (length(x$notes)) {
@@ -132,12 +142,14 @@ summary.segmented_qcc <- function(object, digits = 4, ...) {
   print(object, digits = digits)
   cat("\nStandard deviation (whole series): ",
       format(object$std.dev, digits = digits), "\n", sep = "")
-  oc <- object$out_of_control
-  if (length(oc)) {
-    cat("\nOut-of-control samples, by segment:\n")
+  for (what in c("out_of_control", "violating_runs")) {
+    pos <- object[[what]]
+    if (!length(pos)) next
+    cat("\n", if (what == "out_of_control") "Samples beyond the limits"
+        else "Samples in a violating run", ", by segment:\n", sep = "")
     for (i in seq_len(nrow(object$segments))) {
       s <- object$segments[i, ]
-      hit <- oc[oc >= s$from & oc <= s$to]
+      hit <- pos[pos >= s$from & pos <= s$to]
       if (length(hit))
         cat("  segment ", i, " (", s$from, "-", s$to, "): ",
             paste(hit, collapse = ", "), "\n", sep = "")

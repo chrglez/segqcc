@@ -40,6 +40,10 @@
 #'   estimate of sigma, \code{"sd"} by the sample standard deviation, and
 #'   \code{"none"} passes the statistic through untouched. See Details --
 #'   leaving this at \code{"none"} makes the detector scale-dependent.
+#' @param run_length length of a run on one side of the centre line that
+#'   counts as a violation, as in \code{\link[qcc]{qcc.options}("run.length")}
+#'   (7). Runs are counted \strong{within} each segment; see Details. Set to
+#'   0 to skip the run rule.
 #' @param min_seg_len minimum segment length, in samples (1).
 #' @param plot if \code{TRUE}, draws the segmented chart.
 #'
@@ -56,6 +60,9 @@
 #'       refitted on its own).}
 #'     \item{\code{out_of_control}}{sample positions whose statistic falls
 #'       outside the limits of the segment it belongs to.}
+#'     \item{\code{violating_runs}}{sample positions belonging to a run of
+#'       \code{run_length} or more consecutive samples on one side of the
+#'       centre line, counted within each segment.}
 #'     \item{\code{segmented}}{\code{TRUE} if change-point detection ran and
 #'       split the series, \code{FALSE} if it was skipped or found nothing.}
 #'     \item{\code{notes}}{character vector of the reasons detection or a
@@ -78,6 +85,14 @@
 #' splits at every scale without costing detection power. Change points are
 #' positions, so nothing has to be mapped back: the limits themselves are
 #' always recomputed from the original data.
+#'
+#' \strong{Run rules.} Besides the samples outside their segment's limits,
+#' the chart reports runs of \code{run_length} consecutive samples on one side
+#' of the centre line. Unlike \code{\link[qcc]{qcc}}, which counts runs over
+#' the whole series, \code{segmented_qcc} counts them within each segment: a
+#' run that straddles a change point compares samples against two different
+#' centres and is not evidence of anything. The rule itself is
+#' \code{qcc}'s, applied segment by segment.
 #'
 #' \strong{Degenerate series.} The function is meant to be pointed at arbitrary
 #' series, so it does not fail when step (2) cannot be carried out. If the
@@ -117,7 +132,7 @@ segmented_qcc <- function(value,
                           method = "PELT", nsigma = 3, penalty = "MBIC",
                           pen_value = NULL, cpt_stat = "mean",
                           scale = c("mr", "sd", "none"),
-                          min_seg_len = 1, plot = FALSE) {
+                          run_length = NULL, min_seg_len = 1, plot = FALSE) {
   type        <- match.arg(type)
   method      <- .check_choice(method,   "method",   .CPT_METHODS)
   penalty     <- .check_choice(penalty,  "penalty",  .CPT_PENALTIES)
@@ -126,6 +141,8 @@ segmented_qcc <- function(value,
   nsigma      <- .check_num1(nsigma, "nsigma", min = .Machine$double.eps)
   min_seg_len <- .check_num1(min_seg_len, "min_seg_len", min = 1,
                              integer = TRUE)
+  if (is.null(run_length)) run_length <- qcc::qcc.options("run.length")
+  run_length <- .check_num1(run_length, "run_length", min = 0, integer = TRUE)
   plot        <- .check_flag(plot, "plot")
 
   spec <- .prepare_input(type, value, sample, sizes, area)
@@ -166,14 +183,23 @@ segmented_qcc <- function(value,
   out <- .fit_qcc(spec, nsigma = nsigma, limits = cbind(LCL, UCL), center = ctr)
 
   oc <- which((!is.na(UCL) & statistic > UCL) | (!is.na(LCL) & statistic < LCL))
-  segs$n_out <- vapply(seq_len(nrow(segs)), function(i)
-    sum(oc >= segs$from[i] & oc <= segs$to[i]), integer(1))
+  runs <- .runs_by_segment(statistic, ctr, segs, run_length)
+  count_in <- function(pos) vapply(seq_len(nrow(segs)), function(i)
+    sum(pos >= segs$from[i] & pos <= segs$to[i]), integer(1))
+  segs$n_out  <- count_in(oc)
+  segs$n_runs <- count_in(runs)
   segs <- segs[c("from", "to", "n_samples", "LCL", "center", "UCL",
-                 "n_out", "limits_from")]
+                 "n_out", "n_runs", "limits_from")]
 
   out$change.points  <- as.integer(cpts_idx)
   out$segments       <- segs
   out$out_of_control <- unname(oc)
+  out$violating_runs <- runs
+  # qcc computed its own runs over the whole series, ignoring the segment
+  # boundaries; replace them so anything reading the object sees the
+  # segment-aware ones.
+  out$violations$violating.runs <- runs
+  out$run_length     <- run_length
   out$segmented      <- length(cpts_idx) > 0L
   out$notes          <- notes
   out$chart.type     <- type
@@ -208,11 +234,12 @@ segmented_qcc <- function(value,
 segmented_xbar <- function(value, sample, method = "PELT", nsigma = 3,
                            penalty = "MBIC", pen_value = NULL,
                            cpt_stat = "mean", scale = c("mr", "sd", "none"),
-                           min_seg_len = 1, plot = FALSE) {
+                           run_length = NULL, min_seg_len = 1, plot = FALSE) {
   segmented_qcc(value, type = "xbar", sample = sample, method = method,
                 nsigma = nsigma, penalty = penalty, pen_value = pen_value,
                 cpt_stat = cpt_stat, scale = match.arg(scale),
-                min_seg_len = min_seg_len, plot = plot)
+                run_length = run_length, min_seg_len = min_seg_len,
+                plot = plot)
 }
 
 # ---- internals --------------------------------------------------------------
@@ -280,6 +307,24 @@ segmented_xbar <- function(value, sample, method = "PELT", nsigma = 3,
                               ") has zero dispersion, so its control limits ",
                               "collapse onto the centre")))
   c(lim[c("LCL", "center", "UCL")], list(source = "segment", note = NULL))
+}
+
+# Samples belonging to a run of `run_length` consecutive points on one side of
+# the centre line, counted within each segment. qcc's own rule is applied to
+# each segment in turn, so the semantics stay exactly qcc's; what changes is
+# that a run is not allowed to straddle a change point, where the centre it is
+# measured against is a different number.
+.runs_by_segment <- function(statistic, center, segs, run_length) {
+  if (run_length <= 0L) return(integer(0))
+  hits <- lapply(seq_len(nrow(segs)), function(i) {
+    idx <- segs$from[i]:segs$to[i]
+    v <- qcc::violating.runs(
+      list(statistics = statistic[idx], center = center[idx][1L],
+           newstats = NULL, limits = NULL),
+      run.length = run_length)
+    if (length(v)) idx[v] else integer(0)
+  })
+  sort(unique(as.integer(unlist(hits, use.names = FALSE))))
 }
 
 # Locate change points in the charted statistic. Never raises: anything that
