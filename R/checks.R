@@ -14,6 +14,18 @@
 .CPT_PENALTIES <- c("None", "SIC", "BIC", "MBIC", "AIC", "Hannan-Quinn",
                     "Asymptotic", "Manual", "CROPS")
 .CPT_STATS     <- c("mean", "meanvar", "var")
+.TEST_STATS    <- c("auto", "Normal", "Poisson")
+
+# Whether the series is a set of Poisson counts the native Poisson cost of
+# `changepoint` can be applied to. That needs the statistic to BE the counts:
+# true of a c chart, and of a u chart only while the inspection area is
+# constant, since otherwise the counts carry the area as well as the rate.
+.poisson_eligible <- function(spec) {
+  if (!spec$type %in% c("c", "u")) return(FALSE)
+  if (spec$type == "u" && length(unique(spec$area)) != 1L) return(FALSE)
+  v <- spec$value
+  all(is.finite(v)) && all(v >= 0) && all(v == round(v))
+}
 
 # qcc tabulates the d2/d3 constants behind the R chart only up to n = 25, and
 # errors outright from n = 51. Beyond 25 it silently returns NA limits, so we

@@ -61,9 +61,14 @@ test_that("a single sample yields a chart without limits, not an error", {
   expect_equal(nrow(fit$segments), 1L)
 })
 
-test_that("a three-sample attribute series works", {
-  expect_silent(fit <- segmented_qcc(c(3, 4, 5), type = "c"))
+test_that("a short attribute series returns a chart, with the reason", {
+  # A c chart uses the Poisson cost, which needs segments of at least two
+  # samples, so three samples cannot be split at all.
+  expect_warning(fit <- segmented_qcc(c(3, 4, 5), type = "c"),
+                 "needs at least 4 for a split")
   expect_equal(fit$n_samples, 3L)
+  expect_equal(nrow(fit$segments), 1L)
+  expect_silent(segmented_qcc(c(3, 4, 5, 6), type = "c"))
 })
 
 test_that("a segment too short to flag anything is reported", {
@@ -95,7 +100,7 @@ test_that("raising min_seg_len turns those segments into out-of-control points",
 test_that("a single-segment series is not reported as short", {
   # One segment covering a 2-sample series is the whole series, not a split
   # isolating an outlier; warning about it would be noise.
-  fit <- segmented_qcc(c(3, 5), type = "c")
+  fit <- suppressWarnings(segmented_qcc(c(3, 5), type = "c"))
   expect_equal(nrow(fit$segments), 1L)
   expect_false(any(grepl("come out as out of control", fit$notes)))
 })

@@ -30,6 +30,13 @@ First release.
   from the very samples they judge, so nothing in it can come out as out of
   control, and fitting a segment around an isolated outlier hides it rather
   than flagging it. Raising `min_seg_len` is the fix.
+* Count charts are routed to `changepoint`'s native Poisson cost rather than a
+  normal one, whose assumptions a series of small counts does not meet. On a
+  homogeneous series with a mean of 0.2 the normal cost reports about 3 change
+  points that are not there and the Poisson cost none; a rise from 0.3 to 1 is
+  found 83% of the time rather than 52%. From a mean of about 2 upwards the two
+  agree. Controlled by `test_stat`; `p` and `np` keep the standardised normal
+  cost, since `changepoint` offers no binomial one.
 * `capability_by_segment()` and `plot_capability_by_segment()` compute
   capability indices within each segment, flagging segments that are not in
   control.

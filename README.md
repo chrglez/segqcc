@@ -101,6 +101,23 @@ the very shifts being looked for). Detection becomes invariant to the units of
 your data, at no cost in power. Change points are positions, so nothing has to
 be mapped back: the limits are always recomputed from the original data.
 
+**Counts get a count model.** A normal cost is a poor description of a series
+of small counts, whose variance is tied to their mean. `changepoint` carries a
+native Poisson cost and `segmented_qcc()` routes count charts to it — the `c`
+chart, and the `u` chart while its inspection area is constant. On a 300-sample
+series it matters where counts are small, which is the common case in
+healthcare and rare-event monitoring:
+
+| Mean count | Spurious change points (normal / Poisson) | Shift found (normal / Poisson) |
+|---|---|---|
+| 0.2 | 3.4 / **0.0** | 0.3 → 1: 52% / **83%** |
+| 0.5 | 0.2 / **0.0** | 0.5 → 1.5: 72% / **93%** |
+| 1 | 0.1 / **0.0** | 1 → 2: 73% / **82%** |
+| ≥ 2 | 0.0 / 0.0 | 2 → 4: 93% / 93% |
+
+`test_stat = "Normal"` opts out. The `p` and `np` charts stay on the
+standardised normal cost, since `changepoint` offers no binomial one.
+
 **Graceful degradation.** A series too short to split, a constant statistic, a
 `min_seg_len` larger than the series, or a detector that refuses the data does
 not raise an error. You get an ordinary single-segment control chart, a

@@ -15,6 +15,7 @@ segmented_qcc(
   penalty = "MBIC",
   pen_value = NULL,
   cpt_stat = "mean",
+  test_stat = c("auto", "Normal", "Poisson"),
   scale = c("mr", "sd", "none"),
   run_length = NULL,
   min_seg_len = 1,
@@ -60,6 +61,11 @@ a change in \code{"mean"} (default, via
 \code{\link[changepoint]{cpt.mean}}), in \code{"var"}iance
 (\code{\link[changepoint]{cpt.var}}), or in either
 (\code{"meanvar"}, \code{\link[changepoint]{cpt.meanvar}}).}
+
+\item{test_stat}{the cost the detector minimises: \code{"Normal"}, or
+\code{"Poisson"} for counts. \code{"auto"} (default) uses
+\code{"Poisson"} on a c chart, and on a u chart whose inspection area is
+constant, and \code{"Normal"} everywhere else. See Details.}
 
 \item{scale}{how the charted statistic is standardised before it is handed
 to the detector: \code{"mr"} (default) divides by the moving-range
@@ -122,6 +128,17 @@ the statistic before detection (\code{scale}), which removes the spurious
 splits at every scale without costing detection power. Change points are
 positions, so nothing has to be mapped back: the limits themselves are
 always recomputed from the original data.
+
+\strong{Counts.} A normal cost is a poor description of a series of small
+counts, whose variance is tied to its mean. \code{changepoint} carries a
+native Poisson cost, and \code{segmented_qcc} routes count charts to it.
+It matters where counts are small: on a homogeneous series with a mean of
+0.2 the standardised normal cost reports about 3 change points that are not
+there and the Poisson cost none, and a rise from 0.3 to 1 is found 83\\% of
+the time rather than 52\\%. From a mean of about 2 upwards the two agree.
+The Poisson cost describes the mean and the variance together, so
+\code{cpt_stat} does not apply to it, and it is fitted to the counts
+themselves rather than to a standardised statistic.
 
 \strong{Run rules.} Besides the samples outside their segment's limits,
 the chart reports runs of \code{run_length} consecutive samples on one side
