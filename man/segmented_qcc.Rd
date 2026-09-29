@@ -16,6 +16,7 @@ segmented_qcc(
   pen_value = NULL,
   cpt_stat = "mean",
   scale = c("mr", "sd", "none"),
+  run_length = NULL,
   min_seg_len = 1,
   plot = FALSE
 )
@@ -66,6 +67,11 @@ estimate of sigma, \code{"sd"} by the sample standard deviation, and
 \code{"none"} passes the statistic through untouched. See Details --
 leaving this at \code{"none"} makes the detector scale-dependent.}
 
+\item{run_length}{length of a run on one side of the centre line that
+counts as a violation, as in \code{\link[qcc]{qcc.options}("run.length")}
+(7). Runs are counted \strong{within} each segment; see Details. Set to
+0 to skip the run rule.}
+
 \item{min_seg_len}{minimum segment length, in samples (1).}
 
 \item{plot}{if \code{TRUE}, draws the segmented chart.}
@@ -84,6 +90,9 @@ changed; \code{integer(0)} when the series is homogeneous.}
 refitted on its own).}
 \item{\code{out_of_control}}{sample positions whose statistic falls
 outside the limits of the segment it belongs to.}
+\item{\code{violating_runs}}{sample positions belonging to a run of
+\code{run_length} or more consecutive samples on one side of the
+centre line, counted within each segment.}
 \item{\code{segmented}}{\code{TRUE} if change-point detection ran and
 split the series, \code{FALSE} if it was skipped or found nothing.}
 \item{\code{notes}}{character vector of the reasons detection or a
@@ -113,6 +122,24 @@ the statistic before detection (\code{scale}), which removes the spurious
 splits at every scale without costing detection power. Change points are
 positions, so nothing has to be mapped back: the limits themselves are
 always recomputed from the original data.
+
+\strong{Run rules.} Besides the samples outside their segment's limits,
+the chart reports runs of \code{run_length} consecutive samples on one side
+of the centre line. Unlike \code{\link[qcc]{qcc}}, which counts runs over
+the whole series, \code{segmented_qcc} counts them within each segment: a
+run that straddles a change point compares samples against two different
+centres and is not evidence of anything. The rule itself is
+\code{qcc}'s, applied segment by segment.
+
+\strong{Very short segments.} A segment's limits are estimated from the
+very samples they then judge, so a segment of one or two samples can never
+report anything outside them: fitting a segment around an isolated outlier
+hides it instead of flagging it. This is easy to cause by accident, because
+the change-point detector will happily isolate a single anomalous sample
+when \code{min_seg_len} allows it. Such segments are therefore reported as
+a warning, and the fix is to raise \code{min_seg_len} so that a regime has
+to last long enough to count as one -- the anomalous samples then surface
+as ordinary out-of-control points, which is what they are.
 
 \strong{Degenerate series.} The function is meant to be pointed at arbitrary
 series, so it does not fail when step (2) cannot be carried out. If the

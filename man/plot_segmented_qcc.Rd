@@ -36,8 +36,10 @@ the chart type.}
 \description{
 Draws the per-sample statistic with each segment's centre and control limits
 spanning \emph{only} the samples of that segment, and the detected change
-points as vertical rules. Points outside the limits of their own segment are
-highlighted.
+points as vertical rules. Samples outside the limits of their own segment
+are marked in red, and samples belonging to a run on one side of their
+segment's centre line in orange, following the convention of
+\code{\link[qcc]{plot.qcc}}.
 }
 \examples{
 data(segxbar)

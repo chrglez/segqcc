@@ -21,4 +21,16 @@ First release.
   of the whole series.
 * Samples are ordered by first appearance, so arbitrary sample labels never
   permute the series.
+* Run-rule violations are reported alongside the samples beyond the limits, in
+  `$violating_runs` and the `n_runs` column, and drawn in orange as `qcc` does.
+  `qcc` counts runs over the whole series; `segmented_qcc()` counts them within
+  each segment, since a run straddling a change point measures its samples
+  against two different centres. Controlled by `run_length`.
+* A segment of one or two samples is warned about: its limits are estimated
+  from the very samples they judge, so nothing in it can come out as out of
+  control, and fitting a segment around an isolated outlier hides it rather
+  than flagging it. Raising `min_seg_len` is the fix.
+* `capability_by_segment()` and `plot_capability_by_segment()` compute
+  capability indices within each segment, flagging segments that are not in
+  control.
 * Bundled data sets: `segxbar`, `segind`, `segp`, `segc`.

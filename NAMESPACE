@@ -3,11 +3,15 @@
 S3method(plot,segmented_qcc)
 S3method(print,segmented_qcc)
 S3method(summary,segmented_qcc)
+export(capability_by_segment)
+export(plot_capability_by_segment)
 export(plot_segmented_qcc)
 export(segmented_qcc)
 export(segmented_xbar)
 importFrom(graphics,
   abline,
+  box,
+  hist,
   legend,
   mtext,
   par,
@@ -16,6 +20,7 @@ importFrom(graphics,
 )
 importFrom(stats,
   ave,
+  dnorm,
   sd,
   var
 )

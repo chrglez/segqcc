@@ -13,6 +13,7 @@ segmented_xbar(
   pen_value = NULL,
   cpt_stat = "mean",
   scale = c("mr", "sd", "none"),
+  run_length = NULL,
   min_seg_len = 1,
   plot = FALSE
 )
@@ -46,6 +47,11 @@ to the detector: \code{"mr"} (default) divides by the moving-range
 estimate of sigma, \code{"sd"} by the sample standard deviation, and
 \code{"none"} passes the statistic through untouched. See Details --
 leaving this at \code{"none"} makes the detector scale-dependent.}
+
+\item{run_length}{length of a run on one side of the centre line that
+counts as a violation, as in \code{\link[qcc]{qcc.options}("run.length")}
+(7). Runs are counted \strong{within} each segment; see Details. Set to
+0 to skip the run rule.}
 
 \item{min_seg_len}{minimum segment length, in samples (1).}
 

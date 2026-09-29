@@ -131,6 +131,22 @@ than aborting the call.
 — integers with gaps, characters, factors — and the time order of your data is
 never silently permuted.
 
+## Capability by segment
+
+Capability indices describe a *stable* process. Computed over a series that
+changes regime they describe no process at all, mixing several — so a segment
+is where they belong, and reading them segment by segment answers what a
+single global index cannot: *when* the process was capable.
+
+```r
+capability_by_segment(fit, spec_limits = c(94, 106))
+plot_capability_by_segment(fit, spec_limits = c(94, 106))
+```
+
+Segments holding samples outside their own control limits are flagged
+`in_control = FALSE` and warned about: capability indices for a segment that is
+not in control do not mean what they appear to.
+
 ## Tuning
 
 | Argument | Purpose |
@@ -140,7 +156,14 @@ never silently permuted.
 | `cpt_stat` | look for a change in `"mean"`, `"var"` or `"meanvar"` |
 | `scale` | `"mr"` (default), `"sd"` or `"none"` standardisation |
 | `min_seg_len` | minimum segment length, in samples |
+| `run_length` | length of a run on one side of the centre that counts as a violation; 0 disables the rule |
 | `nsigma` | width of the control limits, in standard errors |
+
+Raising `min_seg_len` is the principled way to stop the detector isolating a
+single anomalous sample as a segment of its own. That is worth avoiding for a
+concrete reason: a segment's limits are fitted to its own samples, so a
+one-sample segment can never report anything outside them — the split *hides*
+the outlier instead of flagging it. `segmented_qcc()` warns when it happens.
 
 ## Data
 
