@@ -65,3 +65,49 @@ test_that("a three-sample attribute series works", {
   expect_silent(fit <- segmented_qcc(c(3, 4, 5), type = "c"))
   expect_equal(fit$n_samples, 3L)
 })
+
+test_that("a segment too short to flag anything is reported", {
+  # A segment fitted around a single sample puts its limits either side of that
+  # sample, so the sample stops being out of control: the split hides the very
+  # signal it was reacting to.
+  set.seed(51)
+  v <- c(rnorm(1200, 10, 1), rnorm(40, 10, 6), rnorm(1200, 10, 1))
+  s <- rep(1:61, each = 40)
+  expect_warning(fit <- segmented_qcc(v, type = "S", sample = s),
+                 "nothing in them can come out as out of control")
+  short <- fit$segments[fit$segments$n_samples < 3, ]
+  expect_gt(nrow(short), 0)
+  expect_true(all(short$n_out == 0))
+})
+
+test_that("raising min_seg_len turns those segments into out-of-control points", {
+  set.seed(51)
+  v <- c(rnorm(1200, 10, 1), rnorm(40, 10, 6), rnorm(1200, 10, 1))
+  s <- rep(1:61, each = 40)
+  loose <- suppressWarnings(segmented_qcc(v, type = "S", sample = s))
+  tight <- segmented_qcc(v, type = "S", sample = s, min_seg_len = 10)
+  odd <- 31L                                   # the inflated sample
+  expect_false(odd %in% loose$out_of_control)  # hidden by its own segment
+  expect_true(odd %in% tight$out_of_control)   # flagged, as it should be
+  expect_length(tight$notes, 0)
+})
+
+test_that("a single-segment series is not reported as short", {
+  # One segment covering a 2-sample series is the whole series, not a split
+  # isolating an outlier; warning about it would be noise.
+  fit <- segmented_qcc(c(3, 5), type = "c")
+  expect_equal(nrow(fit$segments), 1L)
+  expect_false(any(grepl("come out as out of control", fit$notes)))
+})
+
+test_that("many short segments are reported in one warning, not hundreds", {
+  # An over-segmented series can produce hundreds of one-sample segments; a
+  # warning each would bury every other message.
+  set.seed(24)
+  w <- testthat::capture_warnings(
+    segmented_qcc(rnorm(4000, 100, 20), type = "xbar",
+                  sample = rep(1:400, each = 10), scale = "none"))
+  short <- grep("fewer than 3 samples", w, value = TRUE)
+  expect_length(short, 1)
+  expect_match(short, "more\\)")          # the list is truncated
+})

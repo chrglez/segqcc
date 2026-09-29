@@ -39,7 +39,8 @@ test_that("scale = \"none\" reproduces the unstandardised behaviour", {
   set.seed(24)
   v <- rnorm(4000, 100, 20); s <- rep(1:400, each = 10)
   expect_length(segmented_qcc(v, "xbar", s, scale = "mr")$change.points, 0)
-  expect_gt(length(segmented_qcc(v, "xbar", s, scale = "none")$change.points), 0)
+  expect_gt(length(suppressWarnings(
+    segmented_qcc(v, "xbar", s, scale = "none"))$change.points), 0)
 })
 
 test_that("mr and sd scalings agree on a clean multi-shift series", {

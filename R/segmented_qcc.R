@@ -94,6 +94,16 @@
 #' centres and is not evidence of anything. The rule itself is
 #' \code{qcc}'s, applied segment by segment.
 #'
+#' \strong{Very short segments.} A segment's limits are estimated from the
+#' very samples they then judge, so a segment of one or two samples can never
+#' report anything outside them: fitting a segment around an isolated outlier
+#' hides it instead of flagging it. This is easy to cause by accident, because
+#' the change-point detector will happily isolate a single anomalous sample
+#' when \code{min_seg_len} allows it. Such segments are therefore reported as
+#' a warning, and the fix is to raise \code{min_seg_len} so that a regime has
+#' to last long enough to count as one -- the anomalous samples then surface
+#' as ordinary out-of-control points, which is what they are.
+#'
 #' \strong{Degenerate series.} The function is meant to be pointed at arbitrary
 #' series, so it does not fail when step (2) cannot be carried out. If the
 #' series is too short for the requested \code{min_seg_len}, if the statistic
@@ -190,6 +200,8 @@ segmented_qcc <- function(value,
   segs$n_runs <- count_in(runs)
   segs <- segs[c("from", "to", "n_samples", "LCL", "center", "UCL",
                  "n_out", "n_runs", "limits_from")]
+
+  notes <- c(notes, .short_segment_notes(segs, min_seg_len))
 
   out$change.points  <- as.integer(cpts_idx)
   out$segments       <- segs
@@ -307,6 +319,27 @@ segmented_xbar <- function(value, sample, method = "PELT", nsigma = 3,
                               ") has zero dispersion, so its control limits ",
                               "collapse onto the centre")))
   c(lim[c("LCL", "center", "UCL")], list(source = "segment", note = NULL))
+}
+
+# A segment's control limits are estimated from its own samples, so a segment
+# of one or two samples cannot place any of them outside its limits: an
+# isolated outlier given a segment of its own stops being a signal. Warn,
+# because nothing else in the output shows that a reported "in control"
+# segment was never able to report anything else. One note for all of them:
+# an over-segmented series can produce hundreds, and one warning each would
+# bury everything else.
+.short_segment_notes <- function(segs, min_seg_len) {
+  short <- which(segs$n_samples < 3L)
+  if (!length(short) || nrow(segs) == 1L) return(character(0))
+  shown <- if (length(short) > 6L)
+             paste0(paste(short[1:6], collapse = ", "), ", ... (",
+                    length(short) - 6L, " more)")
+           else paste(short, collapse = ", ")
+  paste0(length(short), " of the ", nrow(segs), " segments have fewer than 3 ",
+         "samples (segment ", shown, "), so their limits are estimated from ",
+         "the very samples they judge and nothing in them can come out as out ",
+         "of control. Raise min_seg_len (now ", min_seg_len, ") if these are ",
+         "isolating anomalous samples rather than real regimes.")
 }
 
 # Samples belonging to a run of `run_length` consecutive points on one side of
