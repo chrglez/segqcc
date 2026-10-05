@@ -30,6 +30,14 @@ First release.
   from the very samples they judge, so nothing in it can come out as out of
   control, and fitting a segment around an isolated outlier hides it rather
   than flagging it. Raising `min_seg_len` is the fix.
+* Fixed: a p, np or u chart whose sample sizes vary was judged against a single
+  pair of limits per segment, taken from that segment's first sample. The limits
+  of these charts depend on the size of each sample, so most of the series was
+  compared against a band that never applied to it - on a 200-sample p chart
+  with sizes between 40 and 120, two samples were reported out of control where
+  none are. Each sample now carries its own limits, which the plot draws as a
+  step and the `segments` table reports as a range (`LCL`..`LCL_max`,
+  `UCL_min`..`UCL`, flagged by `limits_vary`).
 * Count charts are routed to `changepoint`'s native Poisson cost rather than a
   normal one, whose assumptions a series of small counts does not meet. On a
   homogeneous series with a mean of 0.2 the normal cost reports about 3 change

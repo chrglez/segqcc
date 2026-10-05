@@ -58,10 +58,13 @@
 #'     \item{\code{change.points}}{sample positions AFTER which the statistic
 #'       changed; \code{integer(0)} when the series is homogeneous.}
 #'     \item{\code{segments}}{data.frame with one row per segment:
-#'       \code{from}, \code{to}, \code{n_samples}, \code{LCL},
-#'       \code{center}, \code{UCL}, \code{n_out} and \code{limits_from}
-#'       (\code{"segment"}, or \code{"global"} when that segment could not be
-#'       refitted on its own).}
+#'       \code{from}, \code{to}, \code{n_samples}, the limits as the range
+#'       \code{LCL}..\code{LCL_max} and \code{UCL_min}..\code{UCL},
+#'       \code{center}, \code{n_out}, \code{n_runs}, \code{limits_vary}
+#'       and \code{limits_from} (\code{"segment"}, or \code{"global"} when
+#'       that segment could not be refitted on its own). The two ends of each
+#'       range coincide unless \code{limits_vary} is \code{TRUE}; the
+#'       per-sample limits themselves are in \code{limits}.}
 #'     \item{\code{out_of_control}}{sample positions whose statistic falls
 #'       outside the limits of the segment it belongs to.}
 #'     \item{\code{violating_runs}}{sample positions belonging to a run of
@@ -89,6 +92,14 @@
 #' splits at every scale without costing detection power. Change points are
 #' positions, so nothing has to be mapped back: the limits themselves are
 #' always recomputed from the original data.
+#'
+#' \strong{Varying sample sizes.} The control limits of a p, np or u chart
+#' depend on the size of each sample, so a series whose samples differ in size
+#' has a different pair of limits for every sample. Those per-sample limits are
+#' what each sample is judged against, and what \code{limits} holds; the
+#' \code{segments} table reports them as a range, since a segment then has no
+#' single pair. The centre is unaffected -- it is constant within a segment for
+#' every chart type.
 #'
 #' \strong{Counts.} A normal cost is a poor description of a series of small
 #' counts, whose variance is tied to its mean. \code{changepoint} carries a
@@ -199,19 +210,25 @@ segmented_qcc <- function(value,
   segs <- data.frame(from = bounds[-length(bounds)] + 1L, to = bounds[-1L])
   segs$n_samples <- segs$to - segs$from + 1L
 
-  gl  <- .limits_of(gchart)
+  gl  <- .limits_of(gchart, K)
   fits <- lapply(seq_len(nrow(segs)), function(i)
     .refit_segment(spec, nsigma, segs$from[i], segs$to[i], i, gl))
-  segs$LCL         <- vapply(fits, function(x) x$LCL,    numeric(1))
-  segs$center      <- vapply(fits, function(x) x$center, numeric(1))
-  segs$UCL         <- vapply(fits, function(x) x$UCL,    numeric(1))
+
+  # Per-sample limits: each segment contributes as many pairs as it has
+  # samples, which is one repeated pair unless the sample sizes vary.
+  LCL <- unlist(lapply(fits, `[[`, "LCL"), use.names = FALSE)
+  UCL <- unlist(lapply(fits, `[[`, "UCL"), use.names = FALSE)
+  ctr <- rep(vapply(fits, function(x) x$center, numeric(1)), segs$n_samples)
+
+  segs$LCL     <- vapply(fits, function(x) min(x$LCL, na.rm = TRUE), numeric(1))
+  segs$LCL_max <- vapply(fits, function(x) max(x$LCL, na.rm = TRUE), numeric(1))
+  segs$center  <- vapply(fits, function(x) x$center, numeric(1))
+  segs$UCL_min <- vapply(fits, function(x) min(x$UCL, na.rm = TRUE), numeric(1))
+  segs$UCL     <- vapply(fits, function(x) max(x$UCL, na.rm = TRUE), numeric(1))
+  segs$limits_vary <- !(.near(segs$LCL, segs$LCL_max) &
+                        .near(segs$UCL_min, segs$UCL))
   segs$limits_from <- vapply(fits, function(x) x$source, character(1))
   notes <- c(notes, unlist(lapply(fits, function(x) x$note), use.names = FALSE))
-
-  # 4) final chart: whole series, per-segment limits and centres
-  LCL <- rep(segs$LCL,    segs$n_samples)
-  UCL <- rep(segs$UCL,    segs$n_samples)
-  ctr <- rep(segs$center, segs$n_samples)
 
   out <- .fit_qcc(spec, nsigma = nsigma, limits = cbind(LCL, UCL), center = ctr)
 
@@ -221,8 +238,9 @@ segmented_qcc <- function(value,
     sum(pos >= segs$from[i] & pos <= segs$to[i]), integer(1))
   segs$n_out  <- count_in(oc)
   segs$n_runs <- count_in(runs)
-  segs <- segs[c("from", "to", "n_samples", "LCL", "center", "UCL",
-                 "n_out", "n_runs", "limits_from")]
+  segs <- segs[c("from", "to", "n_samples", "LCL", "LCL_max", "center",
+                 "UCL_min", "UCL", "n_out", "n_runs", "limits_vary",
+                 "limits_from")]
 
   notes <- c(notes, .short_segment_notes(segs, min_seg_len))
 
@@ -310,10 +328,15 @@ segmented_xbar <- function(value, sample, method = "PELT", nsigma = 3,
 
 # qcc reports limits either as a length-2 vector or as a K x 2 matrix; reduce
 # to the single (LCL, UCL) pair of a chart fitted on homogeneous data.
-.limits_of <- function(chart) {
+.limits_of <- function(chart, n) {
   lim <- chart$limits
-  if (is.matrix(lim)) lim <- lim[1L, ]
-  list(LCL = as.numeric(lim[1L]), UCL = as.numeric(lim[2L]),
+  # qcc returns one pair of limits when they are the same for every sample, and
+  # one pair PER SAMPLE when they are not - a p, np or u chart whose sample
+  # sizes vary, where the limit depends on n. Taking the first pair and
+  # reusing it would judge most of the series against the wrong band.
+  if (!is.matrix(lim)) lim <- matrix(as.numeric(lim), nrow = 1L)
+  LCL <- as.numeric(lim[, 1L]); UCL <- as.numeric(lim[, 2L])
+  list(LCL = rep_len(LCL, n), UCL = rep_len(UCL, n),
        center = as.numeric(chart$center)[1L])
 }
 
@@ -321,9 +344,10 @@ segmented_xbar <- function(value, sample, method = "PELT", nsigma = 3,
 # for a moving range, a constant statistic, ...) falls back to the limits of
 # the global chart rather than aborting the call.
 .refit_segment <- function(spec, nsigma, from, to, i, global) {
+  n <- to - from + 1L
   fallback <- function(why)
-    list(LCL = global$LCL, center = global$center, UCL = global$UCL,
-         source = "global",
+    list(LCL = global$LCL[from:to], center = global$center,
+         UCL = global$UCL[from:to], source = "global",
          note = paste0("segment ", i, " (samples ", from, "-", to, ", ",
                        to - from + 1L, " sample(s)) ", why,
                        "; used the limits of the whole series instead"))
@@ -335,7 +359,7 @@ segmented_xbar <- function(value, sample, method = "PELT", nsigma = 3,
   if (inherits(fit, "cpt_failed"))
     return(fallback(paste0("could not be refitted (", fit, ")")))
 
-  lim <- .limits_of(fit)
+  lim <- .limits_of(fit, n)
   if (!all(is.finite(c(lim$LCL, lim$UCL, lim$center))))
     return(fallback("has no finite control limits of its own"))
   if (isTRUE(all.equal(lim$LCL, lim$UCL)))
@@ -388,6 +412,8 @@ segmented_xbar <- function(value, sample, method = "PELT", nsigma = 3,
   if (!ok) return(list(test_stat = "Normal", notes = character(0)))
   list(test_stat = "Poisson", notes = character(0))
 }
+
+.near <- function(a, b) abs(a - b) <= 1e-9 * pmax(1, abs(a), abs(b))
 
 # Samples belonging to a run of `run_length` consecutive points on one side of
 # the centre line, counted within each segment. qcc's own rule is applied to

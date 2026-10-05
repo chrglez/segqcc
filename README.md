@@ -101,6 +101,12 @@ the very shifts being looked for). Detection becomes invariant to the units of
 your data, at no cost in power. Change points are positions, so nothing has to
 be mapped back: the limits are always recomputed from the original data.
 
+**Varying sample sizes.** The limits of a `p`, `np` or `u` chart depend on the
+size of each sample, so a series whose samples differ in size has a different
+pair of limits for every sample. Each sample is judged against its own, and the
+plot draws them as a step; the `segments` table reports them as a range, since a
+segment then has no single pair.
+
 **Counts get a count model.** A normal cost is a poor description of a series
 of small counts, whose variance is tied to their mean. `changepoint` carries a
 native Poisson cost and `segmented_qcc()` routes count charts to it — the `c`

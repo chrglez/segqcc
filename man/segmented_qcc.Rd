@@ -90,10 +90,13 @@ limits, plus
 \item{\code{change.points}}{sample positions AFTER which the statistic
 changed; \code{integer(0)} when the series is homogeneous.}
 \item{\code{segments}}{data.frame with one row per segment:
-\code{from}, \code{to}, \code{n_samples}, \code{LCL},
-\code{center}, \code{UCL}, \code{n_out} and \code{limits_from}
-(\code{"segment"}, or \code{"global"} when that segment could not be
-refitted on its own).}
+\code{from}, \code{to}, \code{n_samples}, the limits as the range
+\code{LCL}..\code{LCL_max} and \code{UCL_min}..\code{UCL},
+\code{center}, \code{n_out}, \code{n_runs}, \code{limits_vary}
+and \code{limits_from} (\code{"segment"}, or \code{"global"} when
+that segment could not be refitted on its own). The two ends of each
+range coincide unless \code{limits_vary} is \code{TRUE}; the
+per-sample limits themselves are in \code{limits}.}
 \item{\code{out_of_control}}{sample positions whose statistic falls
 outside the limits of the segment it belongs to.}
 \item{\code{violating_runs}}{sample positions belonging to a run of
@@ -128,6 +131,14 @@ the statistic before detection (\code{scale}), which removes the spurious
 splits at every scale without costing detection power. Change points are
 positions, so nothing has to be mapped back: the limits themselves are
 always recomputed from the original data.
+
+\strong{Varying sample sizes.} The control limits of a p, np or u chart
+depend on the size of each sample, so a series whose samples differ in size
+has a different pair of limits for every sample. Those per-sample limits are
+what each sample is judged against, and what \code{limits} holds; the
+\code{segments} table reports them as a range, since a segment then has no
+single pair. The centre is unaffected -- it is constant within a segment for
+every chart type.
 
 \strong{Counts.} A normal cost is a poor description of a series of small
 counts, whose variance is tied to its mean. \code{changepoint} carries a

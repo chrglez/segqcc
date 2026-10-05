@@ -37,8 +37,10 @@ plot_segmented_qcc <- function(fit, main = NULL, xlab = "Sample", ylab = NULL,
   op <- par(mar = c(4.2, 4.2, 3.2, 1.2))
   on.exit(par(op), add = TRUE)
 
-  rng <- range(c(stats, segs$LCL, segs$UCL, segs$center),
-               na.rm = TRUE, finite = TRUE)
+  lims <- fit$limits
+  if (!is.matrix(lims)) lims <- matrix(as.numeric(lims), nrow = 1L)
+  lims <- lims[rep_len(seq_len(nrow(lims)), length(stats)), , drop = FALSE]
+  rng <- range(c(stats, lims, segs$center), na.rm = TRUE, finite = TRUE)
   pad <- diff(rng) * 0.08
   if (!is.finite(pad) || pad == 0) pad <- max(abs(rng[1L]) * 0.1, 1)
   # The legend is drawn inside the panel, so leave it room rather than let it
@@ -49,11 +51,21 @@ plot_segmented_qcc <- function(fit, main = NULL, xlab = "Sample", ylab = NULL,
 
   # Each segment's limits are drawn only across that segment: spanning them
   # over the whole width (abline) would suggest limits that never applied.
+  # They are drawn as a step, because a p, np or u chart whose sample sizes
+  # vary has a different pair of limits for every sample.
   for (i in seq_len(nrow(segs))) {
+    idx <- segs$from[i]:segs$to[i]
     x0 <- segs$from[i] - 0.5; x1 <- segs$to[i] + 0.5
     segments(x0, segs$center[i], x1, segs$center[i], col = "blue", lwd = 1.6)
-    segments(x0, segs$LCL[i], x1, segs$LCL[i], col = "red", lty = 2, lwd = 1.4)
-    segments(x0, segs$UCL[i], x1, segs$UCL[i], col = "red", lty = 2, lwd = 1.4)
+    if (isTRUE(segs$limits_vary[i])) {
+      points(idx, lims[idx, 1L], type = "s", col = "red", lty = 2, lwd = 1.4)
+      points(idx, lims[idx, 2L], type = "s", col = "red", lty = 2, lwd = 1.4)
+    } else {
+      segments(x0, lims[idx[1L], 1L], x1, lims[idx[1L], 1L],
+               col = "red", lty = 2, lwd = 1.4)
+      segments(x0, lims[idx[1L], 2L], x1, lims[idx[1L], 2L],
+               col = "red", lty = 2, lwd = 1.4)
+    }
   }
   if (length(fit$change.points))
     abline(v = fit$change.points + 0.5, col = "gray40", lwd = 2, lty = 3)
@@ -114,6 +126,9 @@ print.segmented_qcc <- function(x, digits = 4, ...) {
   cat("Violating runs: ", length(x$violating_runs), " samples (runs of ",
       x$run_length, "+ on one side of the centre, within a segment)\n",
       sep = "")
+  if (any(x$segments$limits_vary))
+    cat("Limits vary within a segment (the sample sizes differ), so LCL and\n",
+        "UCL below are ranges: LCL .. LCL_max and UCL_min .. UCL.\n", sep = "")
   cat("\n")
   print(.format_segments(x$segments, digits))
   if (length(x$notes)) {
@@ -175,7 +190,10 @@ summary.segmented_qcc <- function(object, digits = 4, ...) {
 # integer bookkeeping columns alone.
 .format_segments <- function(segs, digits) {
   out <- segs
-  for (j in c("LCL", "center", "UCL"))
+  for (j in c("LCL", "LCL_max", "center", "UCL_min", "UCL"))
     out[[j]] <- signif(out[[j]], digits)
+  # The extra bound of each limit is noise when nothing varies.
+  if (!any(segs$limits_vary))
+    out <- out[setdiff(names(out), c("LCL_max", "UCL_min", "limits_vary"))]
   out
 }
