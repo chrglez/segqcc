@@ -15,3 +15,4 @@ src/*.so
 # knitr scratch output
 /figure/
 .claude/
+Rplots.pdf

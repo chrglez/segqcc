@@ -34,14 +34,26 @@ defectives/defects.}
 observation per sample) or \code{"p"}, \code{"np"}, \code{"c"},
 \code{"u"} (attribute).}
 
-\item{sample}{sample labels, one per element of \code{value}, for variable
-charts. Any type coercible to character is accepted; samples are ordered
-by \strong{first appearance}, so the data must be in time order. Ignored,
-with a warning, for the other chart types.}
+\item{sample}{sample labels, one per element of \code{value}, used
+\strong{only} by the grouped variable charts (\code{"xbar"},
+\code{"R"}, \code{"S"}) to say which observations belong to the same
+sample. Any type coercible to character is accepted; samples are ordered
+by \strong{first appearance}, so the data must be in time order. The
+individuals and attribute charts take one value per sample already and do
+not group, so there \code{sample} is ignored with a warning -- see
+Details for how to aggregate when you have several readings per period.}
 
-\item{sizes}{per-sample size, required for \code{"p"} and \code{"np"}.}
+\item{sizes}{the number of items inspected in each sample, one per element
+of \code{value}. Required for \code{"p"} and \code{"np"}, and accepted
+for no other type. Note that \code{\link[qcc]{qcc}} also takes the u
+chart's exposure through \code{sizes}; here that argument is
+\code{area}, so the two cannot be confused with each other.}
 
-\item{area}{per-sample inspection area, required for \code{"u"}.}
+\item{area}{the inspection area of each sample -- its exposure, in whatever
+unit the defects are counted per: metres of cloth, patient-days, units
+produced. One per element of \code{value}, required for \code{"u"} and
+accepted for no other type. This is what \code{\link[qcc]{qcc}} calls
+\code{sizes} for the u chart.}
 
 \item{method}{change-point search method: \code{"PELT"} (default),
 \code{"AMOC"}, \code{"BinSeg"} or \code{"SegNeigh"}.}
@@ -132,6 +144,23 @@ splits at every scale without costing detection power. Change points are
 positions, so nothing has to be mapped back: the limits themselves are
 always recomputed from the original data.
 
+\strong{Attribute charts take one value per sample.} For \code{"p"},
+\code{"np"}, \code{"c"} and \code{"u"} -- and for \code{"xbar.one"} --
+each element of \code{value} is already one point of the chart, so there is
+nothing to group and \code{sample} does not apply. If your data holds
+several readings per period, aggregate them first and pass the totals:
+
+\preformatted{
+# ten rolls inspected per week, each with its own length
+tot <- aggregate(cbind(defects, length) ~ week, rolls, sum)
+segmented_qcc(tot$defects, type = "u", area = tot$length)
+}
+
+Passing the ungrouped rows instead is also a legitimate chart -- one point
+per roll rather than per week -- but it answers a different question, so the
+choice has to be made deliberately rather than by what \code{sample} seems
+to do.
+
 \strong{Varying sample sizes.} The control limits of a p, np or u chart
 depend on the size of each sample, so a series whose samples differ in size
 has a different pair of limits for every sample. Those per-sample limits are
@@ -177,6 +206,15 @@ chart — an ordinary control chart — is returned with a warning, and the
 reason is recorded in \code{notes}. The same applies per segment in step
 (3): a segment that cannot be refitted on its own falls back to the global
 limits rather than aborting the whole call.
+
+\strong{Using \code{qcc}'s own functions.} The result is a
+\code{\link[qcc]{qcc}} object, so \code{\link[qcc]{beyond.limits}},
+\code{\link[qcc]{violating.runs}}, \code{\link[qcc]{shewhart.rules}} and
+\code{\link[qcc]{oc.curves}} all work on it.
+\code{\link[qcc]{process.capability}} does not: it assumes a single centre,
+and a segmented chart has one per segment. Use
+\code{\link{capability_by_segment}}, which is the right question anyway --
+capability indices describe a stable process.
 }
 \examples{
 # variable chart: 400 samples of 8, with mean shifts at 120 and 240
@@ -189,15 +227,29 @@ fit$segments
 data(segind)
 segmented_qcc(segind$value, type = "xbar.one")
 
-# attribute chart
+# attribute chart: one value per sample, no `sample` argument
 data(segc)
 segmented_qcc(segc$value, type = "c")
+
+# u chart: counts against a varying exposure, which goes in `area`
+# (this is `sizes` in qcc, and the commonest mix-up)
+set.seed(1)
+metres  <- rep(c(10, 8, 13, 10, 12), each = 20)
+defects <- rpois(100, metres * c(rep(0.25, 40), rep(0.70, 60)))
+segmented_qcc(defects, type = "u", area = metres)
+
+# several readings per period: aggregate first, one point per period
+week <- rep(1:10, each = 10)
+tot  <- aggregate(cbind(defects, metres) ~ week,
+                  data.frame(week, defects, metres), sum)
+segmented_qcc(tot$defects, type = "u", area = tot$metres)
 
 # a series too short to segment still returns a usable chart
 suppressWarnings(segmented_qcc(c(3, 5, 4), type = "c"))
 
 }
 \seealso{
-\code{\link{segmented_xbar}} for the X-bar shorthand and
-\code{\link{plot_segmented_qcc}} for the plot.
+\code{\link{segmented_xbar}} for the X-bar shorthand,
+\code{\link{plot_segmented_qcc}} for the plot and
+\code{\link{capability_by_segment}} for capability indices.
 }
