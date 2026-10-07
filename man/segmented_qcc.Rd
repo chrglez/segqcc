@@ -72,7 +72,9 @@ accepted for no other type. This is what \code{\link[qcc]{qcc}} calls
 a change in \code{"mean"} (default, via
 \code{\link[changepoint]{cpt.mean}}), in \code{"var"}iance
 (\code{\link[changepoint]{cpt.var}}), or in either
-(\code{"meanvar"}, \code{\link[changepoint]{cpt.meanvar}}).}
+(\code{"meanvar"}, \code{\link[changepoint]{cpt.meanvar}}). The default
+assumes the dispersion of the statistic stays put; when it does not, use
+\code{"meanvar"}. See Details.}
 
 \item{test_stat}{the cost the detector minimises: \code{"Normal"}, or
 \code{"Poisson"} for counts. \code{"auto"} (default) uses
@@ -134,15 +136,33 @@ detector on that statistic; (3) refit the chart within each segment to get
 locally appropriate limits and centre; (4) rebuild the full chart with those
 per-sample limits.
 
-\strong{Standardisation.} \code{changepoint}'s normal-likelihood cost
-assumes a unit-variance series, so a statistic on any other scale is
-over-segmented: on an homogeneous N(100, 2) series of 400 samples
-\code{cpt.mean} reports about 6 spurious change points, and about 166 when
-the standard deviation is 20. \code{segmented_qcc} therefore standardises
-the statistic before detection (\code{scale}), which removes the spurious
-splits at every scale without costing detection power. Change points are
-positions, so nothing has to be mapped back: the limits themselves are
-always recomputed from the original data.
+\strong{Standardisation.} \code{\link[changepoint]{cpt.mean}} does not
+estimate the variance of the series: with the normal cost it assumes it,
+equal to one. A statistic on any other scale is therefore over-segmented --
+on an homogeneous N(100, 2) series of 400 samples it reports about 6 change
+points that are not there, and about 166 when the standard deviation is 20
+-- and under-detected when the scale is small, which is the usual case for a
+proportion. \code{segmented_qcc} hands the detector the statistic
+standardised (\code{scale}), which is to say on the scale its formula takes
+for granted; that removes the spurious splits at every scale without costing
+detection power.
+
+Only the series given to the detector is standardised, and only the choice
+of where to cut depends on it: change points are positions, so nothing has
+to be mapped back, and the centre and limits are always recomputed
+afterwards from the original data. \code{"var"} and \code{"meanvar"}
+estimate the variance and are already scale-invariant, so the standardisation
+makes no difference to them, and the Poisson cost below is fitted to the raw
+counts instead.
+
+By default the scale is estimated from the moving range,
+\code{mean(abs(diff(x))) / 1.128}, rather than with \code{sd()}. The two
+differ by more than they look: on the package's motivating data the moving
+range gives 0.17 and \code{sd()} 0.55, because \code{sd()} measures each
+sample against the mean of the whole series and so absorbs the very level
+shifts being looked for, whereas consecutive samples almost always sit in
+the same stretch. Dividing by the inflated figure shrinks the shifts and
+loses the smallest of them.
 
 \strong{Attribute charts take one value per sample.} For \code{"p"},
 \code{"np"}, \code{"c"} and \code{"u"} -- and for \code{"xbar.one"} --
@@ -169,13 +189,42 @@ what each sample is judged against, and what \code{limits} holds; the
 single pair. The centre is unaffected -- it is constant within a segment for
 every chart type.
 
+\strong{Choosing \code{cpt_stat}.} \code{"mean"} splits the series into
+stretches of different \emph{level}, taking the dispersion to be the same
+throughout: its cost holds one variance for the whole series and lets only
+the mean differ between segments. That is the usual situation on a control
+chart and it is the most powerful choice when it holds -- on a pure level
+shift of half a standard deviation it finds the change point in 4 runs out
+of 10 against \code{"meanvar"}'s 2.5, since estimating a variance per
+segment costs evidence.
+
+When the dispersion does move, the assumption is simply false, and
+\code{"mean"} fails in two ways: it cannot report the change in dispersion
+at all, and where the variance is larger than it assumes it reads the extra
+scatter as movement of the level, since that is the only explanation its
+model allows. On a series whose mean never moves but whose standard
+deviation triples halfway through, every spurious change point it reports
+falls in the high-variance half, while on the same series without the
+variance change it reports none.
+
+\code{"meanvar"} estimates a mean and a variance per segment, so it has no
+such assumption to violate and finds that change point every time; it is
+also, unlike \code{"mean"}, invariant to the scale of the statistic, so the
+standardisation described above neither helps nor harms it. \code{"var"}
+looks only at the dispersion and ignores the level.
+
+The practical rule is to let the charts decide: if an S or R chart of the
+same data reports that the dispersion changed, analyse the X-bar chart with
+\code{cpt_stat = "meanvar"} rather than the default, which would be working
+from an assumption those data contradict.
+
 \strong{Counts.} A normal cost is a poor description of a series of small
 counts, whose variance is tied to its mean. \code{changepoint} carries a
 native Poisson cost, and \code{segmented_qcc} routes count charts to it.
 It matters where counts are small: on a homogeneous series with a mean of
 0.2 the standardised normal cost reports about 3 change points that are not
-there and the Poisson cost none, and a rise from 0.3 to 1 is found 83\\% of
-the time rather than 52\\%. From a mean of about 2 upwards the two agree.
+there and the Poisson cost none, and a rise from 0.3 to 1 is found in 8 runs
+out of 10 rather than 5. From a mean of about 2 upwards the two agree.
 The Poisson cost describes the mean and the variance together, so
 \code{cpt_stat} does not apply to it, and it is fitted to the counts
 themselves rather than to a standardised statistic.

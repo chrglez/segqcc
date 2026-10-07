@@ -40,7 +40,9 @@ segmented_xbar(
 a change in \code{"mean"} (default, via
 \code{\link[changepoint]{cpt.mean}}), in \code{"var"}iance
 (\code{\link[changepoint]{cpt.var}}), or in either
-(\code{"meanvar"}, \code{\link[changepoint]{cpt.meanvar}}).}
+(\code{"meanvar"}, \code{\link[changepoint]{cpt.meanvar}}). The default
+assumes the dispersion of the statistic stays put; when it does not, use
+\code{"meanvar"}. See Details.}
 
 \item{scale}{how the charted statistic is standardised before it is handed
 to the detector: \code{"mr"} (default) divides by the moving-range
